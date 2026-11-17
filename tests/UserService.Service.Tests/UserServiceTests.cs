@@ -25,7 +25,7 @@ public class UserServiceTests
         _repository.AddAsync(Arg.Any<User>(), Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<User>());
 
-        var result = await _sut.CreateAsync(new CreateUserRequest { Username = "testuser", Email = "test@example.com" });
+        var result = await _sut.CreateAsync(new CreateUserRequest { Username = "testuser", Email = "test@example.com", Password = "password123" });
 
         Assert.Equal("testuser", result.Username);
         Assert.Equal("test@example.com", result.Email);
@@ -38,7 +38,7 @@ public class UserServiceTests
         _repository.ExistsByUsernameAsync("testuser", Arg.Any<CancellationToken>()).Returns(true);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.CreateAsync(new CreateUserRequest { Username = "testuser", Email = "new@example.com" }));
+            () => _sut.CreateAsync(new CreateUserRequest { Username = "testuser", Email = "new@example.com", Password = "password123" }));
 
         Assert.Contains("testuser", ex.Message);
         await _repository.DidNotReceive().AddAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
@@ -51,7 +51,7 @@ public class UserServiceTests
         _repository.ExistsByEmailAsync("taken@example.com", Arg.Any<CancellationToken>()).Returns(true);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.CreateAsync(new CreateUserRequest { Username = "newuser", Email = "taken@example.com" }));
+            () => _sut.CreateAsync(new CreateUserRequest { Username = "newuser", Email = "taken@example.com", Password = "password123" }));
 
         Assert.Contains("taken@example.com", ex.Message);
         await _repository.DidNotReceive().AddAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());

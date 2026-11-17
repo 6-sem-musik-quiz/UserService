@@ -12,4 +12,7 @@ public class UserRepository(AppDbContext context) : Repository<User>(context), I
 
     public Task<bool> ExistsByEmailAsync(string email, CancellationToken ct = default) =>
         Set.AnyAsync(u => u.Email == email, ct);
+
+    public Task<User?> FindByUsernameAsync(string username, CancellationToken ct = default) =>
+        Set.FirstOrDefaultAsync(u => u.Username == username, ct);
 }

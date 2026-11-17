@@ -9,5 +9,10 @@ public static class UserMappings
         new(entity.Id, entity.Username, entity.Email, entity.CreatedAt);
 
     public static User ToEntity(this CreateUserRequest request) =>
-        new() { Username = request.Username, Email = request.Email };
+        new()
+        {
+            Username = request.Username,
+            Email = request.Email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
+        };
 }

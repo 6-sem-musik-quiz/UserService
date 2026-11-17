@@ -11,6 +11,8 @@ public static class ServiceLayerExtensions
     {
         services.AddScoped<IExampleService, ExampleService>();
         services.AddScoped<IUserService, UserServiceImpl>();
+        services.AddScoped<IUserManager, UserManager>();
+        services.AddScoped<ITokenService, TokenService>();
 
         return services;
     }
