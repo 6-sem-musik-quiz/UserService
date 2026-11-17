@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+# A new push to the same branch cancels the old run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -24,3 +29,49 @@ jobs:
 
       - name: Test
         run: dotnet test --no-build -c Release --verbosity normal
+
+  # Builds the Docker image on every PR (so a broken Dockerfile fails the PR),
+  # and pushes it to GHCR only on main. Flux in the cluster finds the new tag
+  # and deploys it (see 6-sem-musik-quiz/gitops).
+  image:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # Tag: <run number>-<8 char sha>-<unix time>, e.g. 12-a1b2c3d4-1791234567.
+      # Flux picks the newest unix time. The image name is the repo name in
+      # lowercase, e.g. ghcr.io/6-sem-musik-quiz/userservice.
+      - name: Image name and tag
+        id: meta
+        run: |
+          repo="${GITHUB_REPOSITORY#*/}"
+          echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/${repo,,}" >> "$GITHUB_OUTPUT"
+          echo "tag=${GITHUB_RUN_NUMBER}-${GITHUB_SHA::8}-$(date +%s)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.event_name == 'push' }}
+          tags: ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}
+          labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Summary
+        if: github.event_name == 'push'
+        run: echo "Pushed \`${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}\`" >> "$GITHUB_STEP_SUMMARY"

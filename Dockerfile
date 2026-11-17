@@ -15,5 +15,7 @@ RUN dotnet publish src/UserService.Api/UserService.Api.csproj -c Release -o /app
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 EXPOSE 8080
+# The non-root "app" user (uid 1654) that the .NET images ship with.
+USER $APP_UID
 COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "UserService.Api.dll"]
