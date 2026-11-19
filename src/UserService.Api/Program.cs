@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using UserService.Api.Middleware;
+using UserService.Repository.Data;
 using UserService.Repository.Extensions;
 using UserService.Service.Extensions;
 
@@ -9,7 +11,10 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-builder.Services.AddHealthChecks();
+// /health is liveness (the process is up); /health/ready also checks
+// that the database answers, so a pod without a DB gets no traffic.
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>("postgres", tags: ["ready"]);
 
 builder.Services.AddRepositoryLayer(
     builder.Configuration.GetConnectionString("Default")
@@ -27,7 +32,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapControllers();
-app.MapHealthChecks("/health");
+app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false });
+app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = c => c.Tags.Contains("ready") });
 
 app.Run();
 

@@ -47,6 +47,7 @@ dotnet run --project src/UserService.Api
 - API: http://localhost:5001
 - Swagger: http://localhost:5001/swagger
 - Health: http://localhost:5001/health
+- Ready (also checks Postgres): http://localhost:5001/health/ready
 - Postgres: `localhost:5441` (postgres / postgres)
 
 ## Database migrations
