@@ -4,6 +4,11 @@ GET {{baseUrl}}/health
 
 ###
 
+# 200 when the database answers, 503 when it does not.
+GET {{baseUrl}}/health/ready
+
+###
+
 GET {{baseUrl}}/api/example
 
 ###
