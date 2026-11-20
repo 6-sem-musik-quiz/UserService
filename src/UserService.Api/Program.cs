@@ -23,6 +23,11 @@ builder.Services.AddServiceLayer();
 
 var app = builder.Build();
 
+// Bring the database schema up to date before taking traffic. Tests turn this off
+// with Database:MigrateOnStartup=false when they have no Postgres.
+if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
+    app.Services.MigrateDatabase();
+
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())

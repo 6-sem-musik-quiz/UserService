@@ -52,6 +52,10 @@ dotnet run --project src/UserService.Api
 
 ## Database migrations
 
+The API applies pending migrations when it starts, so a deploy from `main` updates the schema by itself. EF skips migrations already listed in `__EFMigrationsHistory`, and locks the database while migrating, so several pods starting at once is fine. Turn it off with `Database__MigrateOnStartup=false`.
+
+To add a migration or apply one by hand:
+
 ```bash
 dotnet tool install --global dotnet-ef
 dotnet ef migrations add <Name> --project src/UserService.Repository --startup-project src/UserService.Api
