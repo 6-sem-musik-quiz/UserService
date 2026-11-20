@@ -1,3 +1,13 @@
+# Runs the API against the REAL Postgres in the cluster (over Tailscale).
+# This is live data: what you create or delete here is real.
+#
+# One-time setup (see README, "Running locally"):
+#   copy .env.example to .env   (.env is in .gitignore, never commit it)
+#   put the userservice DB password in .env
+#
+#   docker compose up --build
+#
+# Compose stops with an error if DB_PASSWORD is missing or empty.
 services:
   api:
     build: .
@@ -5,26 +15,9 @@ services:
       - "5001:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__Default: "Host=db;Port=5432;Database=userservice;Username=postgres;Password=postgres"
-    depends_on:
-      db:
-        condition: service_healthy
-
-  db:
-    image: postgres:17
-    environment:
-      POSTGRES_DB: userservice
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5441:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    volumes:
-      - db-data:/var/lib/postgresql/data
-
-volumes:
-  db-data:
+      ConnectionStrings__Default: "Host=${DB_HOST:-quiz-postgres.tail5a1bc5.ts.net};Port=${DB_PORT:-5432};Database=userservice;Username=userservice;Password=${DB_PASSWORD:?DB_PASSWORD is not set. Copy .env.example to .env and fill it in (see README)}"
+      # Never run migrations against the shared database from a local branch.
+      # Schema changes reach the real database only through a deploy from main.
+      Database__MigrateOnStartup: "false"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

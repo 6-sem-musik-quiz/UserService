@@ -31,36 +31,52 @@ Api  ──►  Service  ──►  Repository
 
 ## Running locally
 
-**Everything in Docker:**
+Locally the API always runs against the **real** Postgres in the cluster
+(`quiz-postgres.tail5a1bc5.ts.net`, Tailscale on). **This is live data.**
+Migrations are turned off locally (`Database:MigrateOnStartup=false`), so a branch can never
+change the shared schema; schema changes reach the database only through a deploy from `main`.
 
-```bash
+The password is a secret, so it is not in Git. Get it with
+`bao kv get -field=userservice kv/quiz/postgres` (or ask Asger).
+
+**Docker:** keep the password in a local `.env` file (in `.gitignore`). Compose stops with a
+clear message if it is missing.
+
+```powershell
+Copy-Item .env.example .env      # once, then fill in DB_PASSWORD
 docker compose up --build
 ```
 
-**API from your IDE, database in Docker:**
+**From your IDE:** `appsettings.Development.json` has the host and user but no password;
+Npgsql reads it from `PGPASSWORD`.
 
-```bash
-docker compose up db
+```powershell
+$env:PGPASSWORD = "<password>"
 dotnet run --project src/UserService.Api
 ```
+
+Without Tailscale: `kubectl -n quiz port-forward svc/postgresql 15432:5432`, then set
+`DB_HOST=host.docker.internal` and `DB_PORT=15432` in `.env` (see `.env.example`).
 
 - API: http://localhost:5001
 - Swagger: http://localhost:5001/swagger
 - Health: http://localhost:5001/health
 - Ready (also checks Postgres): http://localhost:5001/health/ready
-- Postgres: `localhost:5441` (postgres / postgres)
 
 ## Database migrations
 
 The API applies pending migrations when it starts, so a deploy from `main` updates the schema by itself. EF skips migrations already listed in `__EFMigrationsHistory`, and locks the database while migrating, so several pods starting at once is fine. Turn it off with `Database__MigrateOnStartup=false`.
 
-To add a migration or apply one by hand:
+To add a migration:
 
 ```bash
 dotnet tool install --global dotnet-ef
 dotnet ef migrations add <Name> --project src/UserService.Repository --startup-project src/UserService.Api
-dotnet ef database update --project src/UserService.Repository --startup-project src/UserService.Api
 ```
+
+Do **not** run `dotnet ef database update` locally: your connection string points at the real
+database, so it would apply your branch's migrations to the shared schema. Merge to `main`
+and the deploy applies them.
 
 ## Tests
 
@@ -76,10 +92,10 @@ hente adgangskoden, oprette en testbruger og køre kontrol-scriptet
 
 ## Service ports
 
-| Service | API | Postgres |
-|---|---|---|
-| UserService | 5001 | 5441 |
-| MusicService | 5002 | 5442 |
-| StatisticService | 5003 | 5443 |
-| LobbyService | 5004 | 5444 |
-| GameService | 5005 | 5445 |
+| Service | API |
+|---|---|
+| UserService | 5001 |
+| MusicService | 5002 |
+| StatisticService | 5003 |
+| LobbyService | 5004 |
+| GameService | 5005 |
