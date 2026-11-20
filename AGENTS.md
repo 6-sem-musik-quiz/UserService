@@ -20,7 +20,7 @@ dotnet build -c Release
 dotnet test -c Release
 ```
 
-Run locally: `docker compose up db` then `dotnet run --project src/UserService.Api`. Review the README before migrations, DB access or changing ports.
+Run locally: `docker compose up --build` (needs a local `.env`, which must never be committed). It runs against the REAL cluster database with migrations off; see README "Running locally". Review the README before migrations, DB access or changing ports.
 
 ## Four-agent workflow
 
