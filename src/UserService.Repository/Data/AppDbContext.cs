@@ -5,10 +5,13 @@ namespace UserService.Repository.Data;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
-    public DbSet<Example> Examples => Set<Example>();
+    public DbSet<User> Users => Set<User>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // citext gives case-insensitive comparison and uniqueness for User.UserName.
+        modelBuilder.HasPostgresExtension("citext");
+
         // Picks up every IEntityTypeConfiguration<T> in this assembly (see Data/Configurations).
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }
