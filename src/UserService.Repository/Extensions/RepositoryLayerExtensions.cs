@@ -12,7 +12,7 @@ public static class RepositoryLayerExtensions
     {
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 
-        services.AddScoped<IExampleRepository, ExampleRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
 
         return services;
     }

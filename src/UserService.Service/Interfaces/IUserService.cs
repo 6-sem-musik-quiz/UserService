@@ -1,0 +1,12 @@
+using UserService.Domain.DTOs;
+
+namespace UserService.Service.Interfaces;
+
+public interface IUserService
+{
+    Task<UserDto?> GetByIdAsync(int id, CancellationToken ct = default);
+
+    // Throws UserValidationException on invalid input and DuplicateUserNameException
+    // if the name is taken (case-insensitive). New users always get Role = Player.
+    Task<UserDto> CreateAsync(CreateUserRequest request, CancellationToken ct = default);
+}

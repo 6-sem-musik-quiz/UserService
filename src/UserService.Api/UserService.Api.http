@@ -9,14 +9,26 @@ GET {{baseUrl}}/health/ready
 
 ###
 
-GET {{baseUrl}}/api/example
-
-###
-
-POST {{baseUrl}}/api/example
+# 201 Created + Location: /api/users/{id}
+POST {{baseUrl}}/api/users
 Content-Type: application/json
 
 {
-  "name": "Test",
-  "description": "Created from the .http file"
+  "userName": "alice_01",
+  "password": "correct-horse"
 }
+
+###
+
+# 400 with field errors
+POST {{baseUrl}}/api/users
+Content-Type: application/json
+
+{
+  "userName": "a!",
+  "password": "short"
+}
+
+###
+
+GET {{baseUrl}}/api/users/1

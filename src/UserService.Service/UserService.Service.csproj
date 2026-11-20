@@ -3,4 +3,8 @@
     <ProjectReference Include="..\UserService.Domain\UserService.Domain.csproj" />
     <ProjectReference Include="..\UserService.Repository\UserService.Repository.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- PasswordHasher<TUser>: PBKDF2 with the salt embedded in the hash. -->
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="10.0.15" />
+  </ItemGroup>
 </Project>
