@@ -8,7 +8,10 @@ public class HealthCheckTests(WebApplicationFactory<Program> factory) : IClassFi
     [Fact]
     public async Task Health_ReturnsOk()
     {
-        var client = factory.CreateClient();
+        // There is no Postgres in CI, so don't run migrations on startup.
+        var client = factory
+            .WithWebHostBuilder(b => b.UseSetting("Database:MigrateOnStartup", "false"))
+            .CreateClient();
 
         var response = await client.GetAsync("/health");
 
