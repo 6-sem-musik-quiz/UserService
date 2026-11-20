@@ -68,6 +68,12 @@ dotnet ef database update --project src/UserService.Repository --startup-project
 dotnet test
 ```
 
+## Database
+
+Se [docs/database.md](docs/database.md) for vejledning om at forbinde med pgAdmin 4,
+hente adgangskoden, oprette en testbruger og køre kontrol-scriptet
+[docs/sql/check-users.sql](docs/sql/check-users.sql).
+
 ## Service ports
 
 | Service | API | Postgres |
