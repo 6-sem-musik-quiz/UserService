@@ -10,7 +10,10 @@ using UserService.Service.Mappings;
 
 namespace UserService.Service.Services;
 
-public partial class UserService(IUserRepository repository, IPasswordHasher<User> passwordHasher) : IUserService
+public partial class UserService(
+    IUserRepository repository,
+    IPasswordHasher<User> passwordHasher,
+    ITokenService tokenService) : IUserService
 {
     public const int UserNameMinLength = 3;
     public const int UserNameMaxLength = 20;
@@ -35,6 +38,24 @@ public partial class UserService(IUserRepository repository, IPasswordHasher<Use
 
         var created = await repository.AddAsync(user, ct);
         return created.ToDto();
+    }
+
+    public async Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken ct = default)
+    {
+        var user = request.UserName is not null
+            ? await repository.GetByUserNameAsync(request.UserName, ct)
+            : null;
+
+        if (user is null
+            || passwordHasher.VerifyHashedPassword(
+                   user, user.PasswordHash, request.Password ?? string.Empty)
+               == PasswordVerificationResult.Failed)
+        {
+            throw new InvalidCredentialsException();
+        }
+
+        var (token, expiresAt) = tokenService.CreateToken(user);
+        return new LoginResponse(token, expiresAt, user.ToDto());
     }
 
     private static void Validate(CreateUserRequest request)

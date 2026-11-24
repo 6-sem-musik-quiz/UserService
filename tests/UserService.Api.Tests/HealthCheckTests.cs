@@ -1,19 +1,14 @@
 using System.Net;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace UserService.Api.Tests;
 
-public class HealthCheckTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+// Uses UserServiceApiFactory so the JWT signing key is configured and the real Postgres is not needed.
+public class HealthCheckTests(UserServiceApiFactory factory) : IClassFixture<UserServiceApiFactory>
 {
     [Fact]
     public async Task Health_ReturnsOk()
     {
-        // There is no Postgres in CI, so don't run migrations on startup.
-        var client = factory
-            .WithWebHostBuilder(b => b.UseSetting("Database:MigrateOnStartup", "false"))
-            .CreateClient();
-
-        var response = await client.GetAsync("/health");
+        var response = await factory.CreateClient().GetAsync("/health");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }

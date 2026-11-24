@@ -9,4 +9,7 @@ public interface IUserService
     // Throws UserValidationException on invalid input and DuplicateUserNameException
     // if the name is taken (case-insensitive). New users always get Role = Player.
     Task<UserDto> CreateAsync(CreateUserRequest request, CancellationToken ct = default);
+
+    // Throws InvalidCredentialsException for unknown user OR wrong password (same message).
+    Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken ct = default);
 }

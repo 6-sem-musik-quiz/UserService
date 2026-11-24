@@ -29,6 +29,28 @@ Api  ──►  Service  ──►  Repository
 5. Controller in `Api/Controllers`
 6. Tests
 
+## Authentication — JWT
+
+UserService issues HS256 tokens that all services can validate with the same parameters.
+
+| Parameter | Value |
+|---|---|
+| Algorithm | HS256 |
+| Issuer | `slopster-userservice` |
+| Audience | `slopster` |
+| Lifetime | 12 hours (configurable via `Jwt:LifetimeHours`) |
+| Signing key | `Jwt:SigningKey` / env `Jwt__SigningKey` — min. 32 bytes, comes from OpenBao |
+
+**Claims in every token**
+
+| Claim | Content |
+|---|---|
+| `sub` | User ID (integer as string) |
+| `unique_name` | User name |
+| `role` | `Player` or `Admin` |
+
+**Validating tokens in other services** — configure `JwtBearer` with issuer `slopster-userservice`, audience `slopster`, and the shared `Jwt__SigningKey` from OpenBao. The service will fail to start if the key is absent or shorter than 32 bytes.
+
 ## Running locally
 
 Locally the API always runs against the **real** Postgres in the cluster

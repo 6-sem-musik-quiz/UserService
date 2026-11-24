@@ -48,4 +48,24 @@ public class UsersController(IUserService userService) : ControllerBase
                 detail: "A user with this user name already exists.");
         }
     }
+
+    // Public sign-in (edge: POST /api/userservice/users/login).
+    [HttpPost("login")]
+    [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<LoginResponse>> Login(LoginRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var response = await userService.LoginAsync(request, ct);
+            return Ok(response);
+        }
+        catch (InvalidCredentialsException)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Unauthorized",
+                detail: "Invalid user name or password.");
+        }
+    }
 }

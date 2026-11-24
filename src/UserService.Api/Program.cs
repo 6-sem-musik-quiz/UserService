@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using UserService.Api.Middleware;
 using UserService.Repository.Data;
@@ -19,9 +20,16 @@ builder.Services.AddHealthChecks()
 builder.Services.AddRepositoryLayer(
     builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("Connection string 'Default' is not configured."));
+
 builder.Services.AddServiceLayer();
 
 var app = builder.Build();
+
+// Validate after Build() so WebApplicationFactory configuration overrides are applied.
+var jwtKey = app.Configuration["Jwt:SigningKey"]
+    ?? throw new InvalidOperationException("Jwt:SigningKey is not configured. Set the Jwt__SigningKey environment variable.");
+if (Encoding.UTF8.GetByteCount(jwtKey) < 32)
+    throw new InvalidOperationException("Jwt:SigningKey must be at least 32 bytes.");
 
 // Bring the database schema up to date before taking traffic. Tests turn this off
 // with Database:MigrateOnStartup=false when they have no Postgres.

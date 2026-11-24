@@ -21,6 +21,12 @@ public class UserRepository(AppDbContext context) : IUserRepository
         return context.Users.AnyAsync(u => u.UserName.ToLower() == normalized, ct);
     }
 
+    public Task<User?> GetByUserNameAsync(string userName, CancellationToken ct = default)
+    {
+        var normalized = userName.ToLower();
+        return context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserName.ToLower() == normalized, ct);
+    }
+
     public async Task<User> AddAsync(User user, CancellationToken ct = default)
     {
         context.Users.Add(user);

@@ -5,6 +5,7 @@ using UserService.Domain.Entities;
 using UserService.Domain.Exceptions;
 using UserService.Repository.Interfaces;
 using UserService.Service.Exceptions;
+using UserService.Service.Interfaces;
 using Sut = UserService.Service.Services.UserService;
 
 namespace UserService.Service.Tests;
@@ -13,6 +14,7 @@ public class UserServiceTests
 {
     private readonly IUserRepository _repository = Substitute.For<IUserRepository>();
     private readonly IPasswordHasher<User> _hasher = new PasswordHasher<User>();
+    private readonly ITokenService _tokenService = Substitute.For<ITokenService>();
     private readonly Sut _sut;
 
     public UserServiceTests()
@@ -24,7 +26,7 @@ public class UserServiceTests
                 user.Id = 42;
                 return user;
             });
-        _sut = new Sut(_repository, _hasher);
+        _sut = new Sut(_repository, _hasher, _tokenService);
     }
 
     [Fact]
