@@ -12,6 +12,7 @@ public static class ServiceLayerExtensions
         services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
         services.AddSingleton<ITokenService, Services.TokenService>();
         services.AddScoped<IUserService, Services.UserService>();
+        services.AddScoped<IRefreshTokenService, Services.RefreshTokenService>();
 
         return services;
     }
