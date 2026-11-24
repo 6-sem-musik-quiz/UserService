@@ -1,5 +1,7 @@
 using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.IdentityModel.Tokens;
 using UserService.Api.Middleware;
 using UserService.Repository.Data;
 using UserService.Repository.Extensions;
@@ -23,6 +25,35 @@ builder.Services.AddRepositoryLayer(
 
 builder.Services.AddServiceLayer();
 
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer();
+
+builder.Services.AddAuthorization();
+
+// Configure JWT options via DI so WebApplicationFactory configuration overrides are applied
+// (same pattern as the key validation below — both run after all config sources are merged).
+builder.Services
+    .AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+    .Configure<IConfiguration>((options, config) =>
+    {
+        var key = config["Jwt:SigningKey"];
+        if (string.IsNullOrEmpty(key))
+            return; // startup validation below will throw before any requests arrive
+
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = "slopster-userservice",
+            ValidateAudience = true,
+            ValidAudience = "slopster",
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+            ValidateLifetime = true,
+        };
+    });
+
 var app = builder.Build();
 
 // Validate after Build() so WebApplicationFactory configuration overrides are applied.
@@ -43,6 +74,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false });

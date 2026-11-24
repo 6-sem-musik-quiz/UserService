@@ -100,3 +100,100 @@ public class UserServiceTests
         await _repository.DidNotReceive().AddAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
     }
 }
+
+public class UserServiceGetByIdsTests
+{
+    private readonly IUserRepository _repository = Substitute.For<IUserRepository>();
+    private readonly IPasswordHasher<User> _hasher = new PasswordHasher<User>();
+    private readonly ITokenService _tokenService = Substitute.For<ITokenService>();
+    private readonly Sut _sut;
+
+    public UserServiceGetByIdsTests()
+    {
+        _sut = new Sut(_repository, _hasher, _tokenService);
+    }
+
+    [Fact]
+    public async Task GetByIdsAsync_ValidIds_ReturnsMappedSummaries()
+    {
+        var users = new List<User>
+        {
+            new() { Id = 1, UserName = "Alice", Role = UserRole.Player, PasswordHash = "x" },
+            new() { Id = 2, UserName = "Bob", Role = UserRole.Player, PasswordHash = "x" },
+        };
+        _repository.GetByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(users);
+
+        var result = (await _sut.GetByIdsAsync([1, 2])).ToList();
+
+        Assert.Equal(2, result.Count);
+        Assert.Contains(result, u => u.Id == 1 && u.UserName == "Alice");
+        Assert.Contains(result, u => u.Id == 2 && u.UserName == "Bob");
+    }
+
+    [Fact]
+    public async Task GetByIdsAsync_SummaryDto_DoesNotExposeRole()
+    {
+        _repository.GetByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns([new User { Id = 1, UserName = "Alice", Role = UserRole.Player, PasswordHash = "x" }]);
+
+        var result = (await _sut.GetByIdsAsync([1])).Single();
+
+        Assert.IsType<UserSummaryDto>(result);
+        Assert.Equal(1, result.Id);
+        Assert.Equal("Alice", result.UserName);
+    }
+
+    [Fact]
+    public async Task GetByIdsAsync_EmptyList_ReturnsEmpty()
+    {
+        _repository.GetByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        var result = await _sut.GetByIdsAsync([]);
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetByIdsAsync_SomeIdsNotFound_OnlyReturnsFoundUsers()
+    {
+        _repository.GetByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns([new User { Id = 1, UserName = "Alice", Role = UserRole.Player, PasswordHash = "x" }]);
+
+        var result = (await _sut.GetByIdsAsync([1, 999])).ToList();
+
+        Assert.Single(result);
+        Assert.Equal(1, result[0].Id);
+    }
+
+    [Fact]
+    public async Task GetByIdsAsync_ExactlyOneHundredIds_DelegatesToRepository()
+    {
+        var ids = Enumerable.Range(1, 100).ToList();
+        _repository.GetByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        await _sut.GetByIdsAsync(ids);
+
+        await _repository.Received(1).GetByIdsAsync(
+            Arg.Is<IEnumerable<int>>(x => x.Count() == 100),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetByIdsAsync_OneHundredAndOneIds_DelegatesToRepository()
+    {
+        // The 100-ID limit is enforced at the controller level (HTTP 400), not in the service.
+        // The service itself imposes no upper bound and passes all IDs to the repository.
+        var ids = Enumerable.Range(1, 101).ToList();
+        _repository.GetByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        await _sut.GetByIdsAsync(ids);
+
+        await _repository.Received(1).GetByIdsAsync(
+            Arg.Is<IEnumerable<int>>(x => x.Count() == 101),
+            Arg.Any<CancellationToken>());
+    }
+}

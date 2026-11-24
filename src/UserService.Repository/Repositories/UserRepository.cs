@@ -42,4 +42,12 @@ public class UserRepository(AppDbContext context) : IUserRepository
         }
         return user;
     }
+
+    public async Task<IEnumerable<User>> GetByIdsAsync(IEnumerable<int> ids, CancellationToken ct = default)
+    {
+        var idList = ids.ToList();
+        return await context.Users.AsNoTracking()
+            .Where(u => idList.Contains(u.Id))
+            .ToListAsync(ct);
+    }
 }
