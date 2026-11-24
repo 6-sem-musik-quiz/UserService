@@ -12,4 +12,7 @@ public interface IUserService
 
     // Throws InvalidCredentialsException for unknown user OR wrong password (same message).
     Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken ct = default);
+
+    // Returns UserSummaryDto for each id that exists; unknown ids are silently skipped.
+    Task<IEnumerable<UserSummaryDto>> GetByIdsAsync(IEnumerable<int> ids, CancellationToken ct = default);
 }

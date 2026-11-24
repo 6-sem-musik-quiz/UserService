@@ -14,4 +14,7 @@ public interface IUserRepository
 
     // Throws DuplicateUserNameException if the unique index on UserName is violated.
     Task<User> AddAsync(User user, CancellationToken ct = default);
+
+    // Returns all users whose Id is in ids; unknown ids are silently skipped.
+    Task<IEnumerable<User>> GetByIdsAsync(IEnumerable<int> ids, CancellationToken ct = default);
 }

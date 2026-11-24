@@ -40,6 +40,12 @@ public partial class UserService(
         return created.ToDto();
     }
 
+    public async Task<IEnumerable<UserSummaryDto>> GetByIdsAsync(IEnumerable<int> ids, CancellationToken ct = default)
+    {
+        var users = await repository.GetByIdsAsync(ids, ct);
+        return users.Select(u => u.ToSummaryDto());
+    }
+
     public async Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken ct = default)
     {
         var user = request.UserName is not null
