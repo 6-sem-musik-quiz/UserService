@@ -24,6 +24,7 @@ jobs:
             const policy = (() => { const exports = {};
             "use strict";
             Object.defineProperty(exports, "__esModule", { value: true });
+            exports.databaseFiles = void 0;
             exports.parseTrailers = parseTrailers;
             exports.formatTrailers = formatTrailers;
             exports.classifyGate = classifyGate;
@@ -89,6 +90,10 @@ jobs:
                     throw new Error('Contract refs must be id@version');
                 return [...uses.map(r => 'Abb-Contract-Uses: ' + r), ...changes.map(r => 'Abb-Contract-Changes: ' + r)].join('\n') || 'Abb-Contracts: none';
             }
+            /** Files that define a service database: EF entities and their configuration (any depth), the DbContext, migrations and SQL scripts (not documentation). */
+            const databaseFile = /(?:^|\/)(?:Migrations|Entities|Configurations?)\/(?:.+\/)?[^/]+\.cs$|(?:^|\/)[^/]*(?:DbContext|EntityTypeConfiguration)[^/]*\.cs$|^(?!docs\/).*\.sql$/i;
+            const databaseFiles = (files) => files.filter((file) => typeof file === 'string' && databaseFile.test(file));
+            exports.databaseFiles = databaseFiles;
             function classifyGate(branch, commits) {
                 const parsed = commits.map(c => readTrailers(c.message));
                 const branchAgent = /^ai\/[a-z][a-z0-9_]*-\d+-/.test(branch) && !/^ai\/(?:proposal|contract|owners)-/.test(branch);
@@ -97,16 +102,16 @@ jobs:
                 const refs = { uses: unique(parsed.flatMap(c => c.uses)), changes: unique(parsed.flatMap(c => c.changes)) };
                 const needsManifest = agent || parsed.some(c => c.present || c.invalid);
                 if (parsed.some(c => c.invalid))
-                    return { needsManifest, refs, error: 'Invalid or misplaced ABB trailers' };
+                    return { needsManifest, agent, refs, error: 'Invalid or misplaced ABB trailers' };
                 if (agent) {
                     if (firstClaim < 0 || !parsed.length)
-                        return { needsManifest, refs, error: 'Agent PR has no Abb-Claim trailer' };
+                        return { needsManifest, agent, refs, error: 'Agent PR has no Abb-Claim trailer' };
                     for (const commit of parsed.slice(firstClaim)) {
                         if (commit.claims.length !== 1 || !(commit.none || commit.uses.length || commit.changes.length))
-                            return { needsManifest, refs, error: 'Agent commit is missing claim or contract declarations' };
+                            return { needsManifest, agent, refs, error: 'Agent commit is missing claim or contract declarations' };
                     }
                 }
-                return { needsManifest, refs };
+                return { needsManifest, agent, refs };
             }
             function evaluateGate(refs, manifest) {
                 const required = unique([...refs.uses, ...refs.changes]);
@@ -139,7 +144,7 @@ jobs:
                 return success('All declared contracts approved');
             }
             /** Fetch failure for any agent PR, including an explicit declaration of no refs, fails closed. */
-            function evaluatePullRequest(branch, commits, manifest) {
+            function evaluatePullRequest(branch, commits, manifest, change) {
                 const classification = classifyGate(branch, commits);
                 if (classification.error)
                     return failure(classification.error);
@@ -148,7 +153,26 @@ jobs:
                 if (!manifest || typeof manifest !== 'object' || manifest.version !== 1 ||
                     !Array.isArray(manifest.contracts))
                     return failure('Contract manifest unavailable or invalid');
-                return evaluateGate(classification.refs, manifest);
+                const declared = evaluateGate(classification.refs, manifest);
+                if (declared.state === 'failure' || !change || !classification.agent)
+                    return declared;
+                return requireDatabaseDesign(classification.refs, manifest, change);
+            }
+            /**
+             * The database design is agreed in the Platform repository. An agent PR that changes entities, the DbContext, migrations
+             * or SQL must therefore declare an approved database contract that Platform holds for this very service.
+             */
+            function requireDatabaseDesign(refs, manifest, change) {
+                if (change.truncated)
+                    return failure('The PR file list is incomplete, so database changes cannot be checked');
+                const touched = (0, exports.databaseFiles)(change.files);
+                if (!touched.length)
+                    return success('All declared contracts approved');
+                const declared = new Set([...refs.uses, ...refs.changes]);
+                const design = manifest.contracts.some(c => declared.has(c.id + '@' + c.version) && c.status === 'approved' && c.kind === 'database' && c.repository === change.repository);
+                if (design)
+                    return success('All declared contracts approved, including the Platform database design');
+                return failure('Database code changed (' + touched[0] + (touched.length > 1 ? ' and ' + (touched.length - 1) + ' more' : '') + '): declare the approved Platform database design for ' + change.repository + ' (Abb-Contract-Uses or Abb-Contract-Changes: <service>.database@<version>)');
             }
             
             return exports; })();
@@ -166,7 +190,7 @@ jobs:
               if (commits.length !== fresh.commits || commits.at(-1)?.sha !== head) throw new Error("Incomplete commit history");
               const messages = commits.map(c => ({message:c.commit.message}));
               const classification = policy.classifyGate(fresh.head.ref,messages);
-              let manifest;
+              let manifest, change;
               if (classification.needsManifest && !classification.error) {
                 if (!process.env.PLATFORM_TOKEN) throw new Error("Missing Platform token");
                 const endpoint = "https://api.github.com/repos/6-sem-musik-quiz/Platform/contents/docs/contracts/agent-contracts.json?ref=main";
@@ -175,8 +199,10 @@ jobs:
                 const file = await response.json();
                 if (file.type !== "file" || file.encoding !== "base64" || file.size > 1000000 || typeof file.content !== "string") throw new Error("Invalid manifest file");
                 manifest = JSON.parse(Buffer.from(file.content,"base64").toString("utf8"));
+                const changed = await github.paginate(github.rest.pulls.listFiles,{...repo,pull_number:pr.number,per_page:100});
+                change = {repository:repo.repo,truncated:changed.length >= 3000,files:changed.flatMap(f => [f.filename,...(f.previous_filename ? [f.previous_filename] : [])])};
               }
-              result = policy.evaluatePullRequest(fresh.head.ref,messages,manifest);
+              result = policy.evaluatePullRequest(fresh.head.ref,messages,manifest,change);
               const latest = (await github.rest.pulls.get({...repo,pull_number:pr.number})).data;
               if (latest.head.sha !== head) result = {state:"failure",description:"PR changed during gate"};
             } catch { result = {state:"failure",description:"Contract gate could not verify PR or manifest"}; }
