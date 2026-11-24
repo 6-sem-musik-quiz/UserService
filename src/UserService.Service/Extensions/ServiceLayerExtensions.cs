@@ -10,6 +10,7 @@ public static class ServiceLayerExtensions
     public static IServiceCollection AddServiceLayer(this IServiceCollection services)
     {
         services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
+        services.AddSingleton<ITokenService, Services.TokenService>();
         services.AddScoped<IUserService, Services.UserService>();
 
         return services;
