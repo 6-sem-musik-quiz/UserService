@@ -112,6 +112,13 @@ Se [docs/database.md](docs/database.md) for vejledning om at forbinde med pgAdmi
 hente adgangskoden, oprette en testbruger og køre kontrol-scriptet
 [docs/sql/check-users.sql](docs/sql/check-users.sql).
 
+## Observability (SCRUM-173)
+
+Traces, metrics and logs go over OTLP (`UseOtlpExporter`; `OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_SERVICE_NAME`
+come from the gitops chart). Traces: HTTP requests (not `/health`), outgoing HTTP and the SQL Npgsql runs.
+Metrics: request duration, runtime, HttpClient, Npgsql and the meter `Slopster.User` with
+`slopster_logins_total{result=success|failed}`. Logs carry the trace id, so Grafana links a log line to its trace.
+
 ## Service ports
 
 | Service | API |

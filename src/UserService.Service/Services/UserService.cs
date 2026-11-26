@@ -7,13 +7,15 @@ using UserService.Repository.Interfaces;
 using UserService.Service.Exceptions;
 using UserService.Service.Interfaces;
 using UserService.Service.Mappings;
+using UserService.Service.Metrics;
 
 namespace UserService.Service.Services;
 
 public partial class UserService(
     IUserRepository repository,
     IPasswordHasher<User> passwordHasher,
-    ITokenService tokenService) : IUserService
+    ITokenService tokenService,
+    UserMetrics? metrics = null) : IUserService // SCRUM-173: counts logins; null in tests that do not look
 {
     public const int UserNameMinLength = 3;
     public const int UserNameMaxLength = 20;
@@ -57,9 +59,11 @@ public partial class UserService(
                    user, user.PasswordHash, request.Password ?? string.Empty)
                == PasswordVerificationResult.Failed)
         {
+            metrics?.Login(success: false);
             throw new InvalidCredentialsException();
         }
 
+        metrics?.Login(success: true);
         var (token, expiresAt) = tokenService.CreateToken(user);
         return new LoginResponse(token, expiresAt, user.ToDto());
     }
