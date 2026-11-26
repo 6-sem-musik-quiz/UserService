@@ -55,7 +55,8 @@ public class TokenServiceTests
         Assert.Equal("alice", principal.FindFirst("unique_name")?.Value);
         Assert.Equal("Player", principal.FindFirst("role")?.Value);
         Assert.Equal("slopster-userservice", principal.FindFirst("iss")?.Value);
-        Assert.True(expiresAt > DateTime.UtcNow.AddHours(11));
+        Assert.True(expiresAt > DateTime.UtcNow.AddMinutes(14));
+        Assert.True(expiresAt <= DateTime.UtcNow.AddMinutes(15));
     }
 
     [Fact]

@@ -13,7 +13,8 @@ public class TokenService(IConfiguration configuration) : ITokenService
     private const string Issuer = "slopster-userservice";
     private const string Audience = "slopster";
     private const int MinKeyBytes = 32;
-    private const int DefaultLifetimeHours = 12;
+    // Short on purpose: the frontend gets a new one with its refresh token (POST /api/auth/refresh).
+    private const int DefaultLifetimeMinutes = 15;
 
     public (string Token, DateTime ExpiresAt) CreateToken(User user)
     {
@@ -23,8 +24,8 @@ public class TokenService(IConfiguration configuration) : ITokenService
         if (Encoding.UTF8.GetByteCount(keyString) < MinKeyBytes)
             throw new InvalidOperationException("Jwt:SigningKey must be at least 32 bytes.");
 
-        var lifetimeHours = configuration.GetValue("Jwt:LifetimeHours", DefaultLifetimeHours);
-        var expiresAt = DateTime.UtcNow.AddHours(lifetimeHours);
+        var lifetimeMinutes = configuration.GetValue("Jwt:LifetimeMinutes", DefaultLifetimeMinutes);
+        var expiresAt = DateTime.UtcNow.AddMinutes(lifetimeMinutes);
 
         var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString));
         var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);

@@ -38,7 +38,7 @@ UserService issues HS256 tokens that all services can validate with the same par
 | Algorithm | HS256 |
 | Issuer | `slopster-userservice` |
 | Audience | `slopster` |
-| Lifetime | 12 hours (configurable via `Jwt:LifetimeHours`) |
+| Lifetime | 15 minutes (configurable via `Jwt:LifetimeMinutes`); the frontend renews it with its refresh token |
 | Signing key | `Jwt:SigningKey` / env `Jwt__SigningKey` — min. 32 bytes, comes from OpenBao |
 
 **Claims in every token**
