@@ -1,23 +1,28 @@
-# Runs the API against the REAL Postgres in the cluster (over Tailscale).
-# This is live data: what you create or delete here is real.
+# Runs UserService in Docker on http://localhost:5001, against the REAL Postgres
+# database in the cluster (reached over Tailscale). This is live data: what you
+# create or delete here is real.
 #
 # One-time setup (see README, "Running locally"):
 #   copy .env.example to .env   (.env is in .gitignore, never commit it)
-#   put the userservice DB password in .env
+#   fill in the userservice database password
 #
 #   docker compose up --build
 #
-# Compose stops with an error if DB_PASSWORD is missing or empty.
+# Database migrations do NOT run locally: ASPNETCORE_ENVIRONMENT=Development loads
+# appsettings.Development.json, which sets Database:MigrateOnStartup to false.
+# Schema changes reach the real database only through a deploy from main.
 services:
   api:
-    build: .
+    build: .                     # build the Dockerfile in this repo
     ports:
-      - "5001:8080"
+      - "5001:8080"             # your machine's port 5001 -> the app's port 8080 in the container
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      # Host and port default to the database's Tailscale address. .env can point
+      # them at a kubectl port-forward instead (see .env.example).
+      # The ":?" makes compose stop with this message when DB_PASSWORD is empty.
       ConnectionStrings__Default: "Host=${DB_HOST:-quiz-postgres.tail5a1bc5.ts.net};Port=${DB_PORT:-5432};Database=userservice;Username=userservice;Password=${DB_PASSWORD:?DB_PASSWORD is not set. Copy .env.example to .env and fill it in (see README)}"
-      # Never run migrations against the shared database from a local branch.
-      # Schema changes reach the real database only through a deploy from main.
-      Database__MigrateOnStartup: "false"
+    # Lets the container reach your own machine as "host.docker.internal",
+    # used when DB_HOST points at a kubectl port-forward.
     extra_hosts:
       - "host.docker.internal:host-gateway"
