@@ -1,12 +1,21 @@
+# CI for this service, run by GitHub Actions.
+# The same file is used in every .NET repo (the services, EdgeService and Frontend).
+#
+# Two jobs:
+#   build-and-test  builds the solution and runs all tests.
+#   image           builds the Docker image. On main it also pushes the image to
+#                   GitHub's container registry (GHCR), where Flux picks it up and
+#                   deploys it to the cluster (see the gitops repo).
 name: CI
 
+# Run on every push to main and on every pull request into main.
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
 
-# A new push to the same branch cancels the old run.
+# Only one run per branch: a new push cancels the run that is still going.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -15,36 +24,37 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
+      # Get the code.
       - uses: actions/checkout@v4
 
+      # Install the .NET 10 SDK.
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
 
-      - name: Restore
-        run: dotnet restore
-
+      # Build in Release mode. "dotnet build" also downloads the NuGet packages.
       - name: Build
-        run: dotnet build --no-restore -c Release
+        run: dotnet build -c Release
 
+      # Run every test project against the build above.
       - name: Test
         run: dotnet test --no-build -c Release --verbosity normal
 
-  # Builds the Docker image on every PR (so a broken Dockerfile fails the PR),
-  # and pushes it to GHCR only on main. Flux in the cluster finds the new tag
-  # and deploys it (see 6-sem-musik-quiz/gitops).
+  # Builds the Docker image on every pull request too, so a broken Dockerfile
+  # fails the PR. The image is only pushed when the run is for main.
   image:
-    needs: build-and-test
+    needs: build-and-test      # only if the tests passed
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      packages: write
+      contents: read           # read the code
+      packages: write          # push the image to GHCR
     steps:
       - uses: actions/checkout@v4
 
-      # Tag: <run number>-<8 char sha>-<unix time>, e.g. 12-a1b2c3d4-1791234567.
-      # Flux picks the newest unix time. The image name is the repo name in
-      # lowercase, e.g. ghcr.io/6-sem-musik-quiz/userservice.
+      # Image name and tag.
+      #   name: ghcr.io/<owner>/<repo>, in lowercase, e.g. ghcr.io/6-sem-musik-quiz/userservice
+      #   tag:  <run number>-<first 8 chars of the commit>-<unix time>, e.g. 12-a1b2c3d4-1791234567
+      # Flux deploys the tag with the newest unix time.
       - name: Image name and tag
         id: meta
         run: |
@@ -52,8 +62,10 @@ jobs:
           echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/${repo,,}" >> "$GITHUB_OUTPUT"
           echo "tag=${GITHUB_RUN_NUMBER}-${GITHUB_SHA::8}-$(date +%s)" >> "$GITHUB_OUTPUT"
 
+      # Docker Buildx is needed for the build cache below.
       - uses: docker/setup-buildx-action@v3
 
+      # Log in to GHCR with the token GitHub gives every run. Only needed to push.
       - name: Log in to GHCR
         if: github.event_name == 'push'
         uses: docker/login-action@v3
@@ -62,6 +74,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Build the Dockerfile in the repo root. Push only on main.
+      # The label links the image to this repo on GitHub.
+      # The cache (type=gha) reuses unchanged layers from earlier runs, which makes builds faster.
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -72,6 +87,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # Show the pushed image and tag on the run's summary page.
       - name: Summary
         if: github.event_name == 'push'
         run: echo "Pushed \`${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}\`" >> "$GITHUB_STEP_SUMMARY"
