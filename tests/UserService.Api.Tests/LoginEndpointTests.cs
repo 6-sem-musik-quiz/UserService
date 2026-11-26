@@ -16,23 +16,23 @@ public class LoginEndpointTests(UserServiceApiFactory factory) : IClassFixture<U
     }
 
     [Fact]
-    public async Task Login_CorrectCredentials_Returns200WithTokenAndUserDto()
+    public async Task Login_CorrectCredentials_Returns200WithAccessTokenAndUserDto()
     {
         const string password = "correct-horse";
         await CreateUserAndReturnNameAsync("LoginOk", password);
 
-        var response = await _client.PostAsJsonAsync("/api/users/login", new { userName = "LoginOk", password });
+        var response = await _client.PostAsJsonAsync("/api/auth/login", new { userName = "LoginOk", password });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var root = body.RootElement;
 
-        var token = root.GetProperty("token").GetString();
+        var token = root.GetProperty("accessToken").GetString();
         Assert.False(string.IsNullOrEmpty(token));
 
-        var expiresAt = root.GetProperty("expiresAt").GetDateTime();
-        Assert.True(expiresAt > DateTime.UtcNow.AddHours(11));
+        var expiresAt = root.GetProperty("accessTokenExpiresAt").GetDateTime();
+        Assert.True(expiresAt > DateTime.UtcNow.AddMinutes(14));
 
         var user = root.GetProperty("user");
         Assert.Equal("LoginOk", user.GetProperty("userName").GetString());
@@ -46,7 +46,7 @@ public class LoginEndpointTests(UserServiceApiFactory factory) : IClassFixture<U
         const string password = "correct-horse";
         await CreateUserAndReturnNameAsync("CaseUser", password);
 
-        var response = await _client.PostAsJsonAsync("/api/users/login", new { userName = "caseuser", password });
+        var response = await _client.PostAsJsonAsync("/api/auth/login", new { userName = "caseuser", password });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -56,7 +56,7 @@ public class LoginEndpointTests(UserServiceApiFactory factory) : IClassFixture<U
     {
         await CreateUserAndReturnNameAsync("WrongPw", "correct-horse");
 
-        var response = await _client.PostAsJsonAsync("/api/users/login", new { userName = "WrongPw", password = "wrong-password" });
+        var response = await _client.PostAsJsonAsync("/api/auth/login", new { userName = "WrongPw", password = "wrong-password" });
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
@@ -68,7 +68,7 @@ public class LoginEndpointTests(UserServiceApiFactory factory) : IClassFixture<U
     [Fact]
     public async Task Login_UnknownUser_Returns401ProblemDetails()
     {
-        var response = await _client.PostAsJsonAsync("/api/users/login", new { userName = "nobody", password = "some-password" });
+        var response = await _client.PostAsJsonAsync("/api/auth/login", new { userName = "nobody", password = "some-password" });
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
@@ -82,8 +82,8 @@ public class LoginEndpointTests(UserServiceApiFactory factory) : IClassFixture<U
     {
         await CreateUserAndReturnNameAsync("SameErr", "correct-horse");
 
-        var r1 = await _client.PostAsJsonAsync("/api/users/login", new { userName = "SameErr", password = "wrong" });
-        var r2 = await _client.PostAsJsonAsync("/api/users/login", new { userName = "nobody-exists", password = "some-pw" });
+        var r1 = await _client.PostAsJsonAsync("/api/auth/login", new { userName = "SameErr", password = "wrong" });
+        var r2 = await _client.PostAsJsonAsync("/api/auth/login", new { userName = "nobody-exists", password = "some-pw" });
 
         using var b1 = JsonDocument.Parse(await r1.Content.ReadAsStringAsync());
         using var b2 = JsonDocument.Parse(await r2.Content.ReadAsStringAsync());

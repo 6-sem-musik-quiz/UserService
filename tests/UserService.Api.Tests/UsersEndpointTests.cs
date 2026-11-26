@@ -196,9 +196,9 @@ public class UsersEndpointTests(UserServiceApiFactory factory) : IClassFixture<U
 
     private static async Task<string> LoginAsync(HttpClient client, string userName, string password)
     {
-        var loginResp = await client.PostAsJsonAsync("/api/users/login", new { userName, password });
+        var loginResp = await client.PostAsJsonAsync("/api/auth/login", new { userName, password });
         loginResp.EnsureSuccessStatusCode();
         using var body = JsonDocument.Parse(await loginResp.Content.ReadAsStringAsync());
-        return body.RootElement.GetProperty("token").GetString()!;
+        return body.RootElement.GetProperty("accessToken").GetString()!;
     }
 }
