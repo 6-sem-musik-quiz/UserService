@@ -18,7 +18,7 @@ public interface IUserRepository
     // Returns all users whose Id is in ids; unknown ids are silently skipped.
     Task<IEnumerable<User>> GetByIdsAsync(IEnumerable<int> ids, CancellationToken ct = default);
 
-    // SCRUM-197: deletes every user whose name starts with prefix (case-insensitive) and their
+    // SCRUM-197: deletes every user whose name starts with prefix (case-sensitive) and their
     // refresh tokens (cascade). Returns the number of users deleted. The caller validates the prefix.
     Task<int> DeleteByUserNamePrefixAsync(string prefix, CancellationToken ct = default);
 }
