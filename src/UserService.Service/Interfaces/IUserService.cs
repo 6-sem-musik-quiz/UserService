@@ -15,4 +15,8 @@ public interface IUserService
 
     // Returns UserSummaryDto for each id that exists; unknown ids are silently skipped.
     Task<IEnumerable<UserSummaryDto>> GetByIdsAsync(IEnumerable<int> ids, CancellationToken ct = default);
+
+    // SCRUM-197: deletes the load-test bots. Only the prefix "loadbot_" is accepted, so real users can
+    // never be removed this way; anything else throws UserValidationException. Returns the count deleted.
+    Task<int> DeleteLoadBotsAsync(string prefix, CancellationToken ct = default);
 }

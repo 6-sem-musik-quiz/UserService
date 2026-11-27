@@ -24,8 +24,21 @@ public partial class UserService(
     [GeneratedRegex("^[A-Za-z0-9_]{3,20}$")]
     private static partial Regex UserNamePattern();
 
+    // SCRUM-197: the one prefix the admin cleanup may delete (the k6 bots are named loadbot_N).
+    public const string LoadBotPrefix = "loadbot_";
+
     public async Task<UserDto?> GetByIdAsync(int id, CancellationToken ct = default) =>
         (await repository.GetByIdAsync(id, ct))?.ToDto();
+
+    public Task<int> DeleteLoadBotsAsync(string prefix, CancellationToken ct = default)
+    {
+        if (!string.Equals(prefix, LoadBotPrefix, StringComparison.Ordinal))
+            throw new UserValidationException(new Dictionary<string, string[]>
+            {
+                ["prefix"] = [$"Only the load-test prefix '{LoadBotPrefix}' can be deleted."]
+            });
+        return repository.DeleteByUserNamePrefixAsync(LoadBotPrefix, ct);
+    }
 
     public async Task<UserDto> CreateAsync(CreateUserRequest request, CancellationToken ct = default)
     {

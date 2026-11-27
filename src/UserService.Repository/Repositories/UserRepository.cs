@@ -50,4 +50,17 @@ public class UserRepository(AppDbContext context) : IUserRepository
             .Where(u => idList.Contains(u.Id))
             .ToListAsync(ct);
     }
+
+    // Load-then-remove instead of ExecuteDeleteAsync: EF InMemory (used by the API tests) does not
+    // support ExecuteDelete. A load test creates at most a few hundred bots, so loading them is cheap.
+    public async Task<int> DeleteByUserNamePrefixAsync(string prefix, CancellationToken ct = default)
+    {
+        var normalized = prefix.ToLower();
+        var users = await context.Users
+            .Where(u => u.UserName.ToLower().StartsWith(normalized))
+            .ToListAsync(ct);
+        context.Users.RemoveRange(users);
+        await context.SaveChangesAsync(ct);
+        return users.Count;
+    }
 }
