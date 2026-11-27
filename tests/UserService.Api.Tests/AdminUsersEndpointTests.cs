@@ -31,6 +31,20 @@ public class AdminUsersEndpointTests(UserServiceApiFactory factory) : IClassFixt
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/users/{bot1}")).StatusCode);
     }
 
+    // A real player may pick "LoadBot_Mads" (the name rule allows it). Only the exact lower-case
+    // prefix the k6 bots use is deleted, the same way StatisticService matches it.
+    [Fact]
+    public async Task Delete_AsAdmin_KeepsNamesThatOnlyDifferInCase()
+    {
+        var client = factory.CreateClient();
+        var player = await CreateUserAsync(client, "LoadBot_Mads");
+
+        var response = await Delete(client, "loadbot_", Token("Admin"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/users/{player}")).StatusCode);
+    }
+
     [Fact]
     public async Task Delete_AsPlayer_Returns403()
     {
