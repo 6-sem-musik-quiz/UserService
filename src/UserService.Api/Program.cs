@@ -34,7 +34,9 @@ builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer();
 
-builder.Services.AddAuthorization();
+// SCRUM-197: AdminOnly reads the "role" claim (RoleClaimType below), like MusicService.
+builder.Services.AddAuthorization(options =>
+    options.AddPolicy(UserService.Api.Controllers.AuthPolicies.AdminOnly, policy => policy.RequireRole("Admin")));
 
 // Configure JWT options via DI so WebApplicationFactory configuration overrides are applied
 // (same pattern as the key validation below — both run after all config sources are merged).
@@ -56,6 +58,7 @@ builder.Services
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
             ValidateLifetime = true,
+            RoleClaimType = "role", // TokenService writes the role as "role", not the long ClaimTypes.Role URI
         };
     });
 
